@@ -1,29 +1,19 @@
 """
 drive_service.py
 ----------------
-Uses domain-wide delegation to upload as the teacher directly.
-The service account impersonates the teacher's Gmail so files
-land in the teacher's Drive with no quota issues.
+Handles file upload to Supabase Storage.
+Replaces Google Drive upload (same interface, drop-in replacement).
+
+Configure in secrets.toml:
+  [settings]
+  supabase_url = "https://xxxxxxxxxxxx.supabase.co"
+  supabase_key = "your-service-role-key"
+  supabase_bucket = "submissions"
 """
 
 import io
 import streamlit as st
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2.service_account import Credentials
-
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
-
-
-def _get_drive_service():
-    creds_dict = dict(st.secrets["google_credentials"])
-    teacher_email = st.secrets["settings"]["teacher_email"]
-    creds = Credentials.from_service_account_info(
-        creds_dict,
-        scopes=SCOPES,
-        subject=teacher_email,   # ← impersonate the teacher's Gmail
-    )
-    return build("drive", "v3", credentials=creds)
+import requests
 
 
 def build_filename(question_id: str, student_name: str, student_id: str) -> str:
@@ -38,29 +28,25 @@ def upload_image(
     student_name: str,
     student_id: str,
 ) -> str:
-    service = _get_drive_service()
-    folder_id = st.secrets["settings"]["drive_folder_id"]
+    """
+    Upload image to Supabase Storage.
+    Returns the filename on success, raises on failure.
+    """
+    supabase_url = st.secrets["settings"]["supabase_url"].rstrip("/")
+    supabase_key = st.secrets["settings"]["supabase_key"]
+    bucket = st.secrets["settings"]["supabase_bucket"]
     filename = build_filename(question_id, student_name, student_id)
 
-    file_metadata = {
-        "name": filename,
-        "parents": [folder_id],
+    url = f"{supabase_url}/storage/v1/object/{bucket}/{filename}"
+
+    headers = {
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "image/jpeg",
     }
 
-    media = MediaIoBaseUpload(
-        io.BytesIO(image_bytes),
-        mimetype="image/jpeg",
-        resumable=False,
-    )
+    response = requests.put(url, headers=headers, data=image_bytes)
 
-    uploaded = (
-        service.files()
-        .create(
-            body=file_metadata,
-            media_body=media,
-            fields="id, name",
-        )
-        .execute()
-    )
+    if response.status_code not in (200, 201):
+        raise Exception(f"Supabase upload failed: {response.status_code} {response.text}")
 
-    return uploaded.get("id", "")
+    return filename

@@ -61,6 +61,7 @@ def upload_image(
     file_metadata = {
         "name": filename,
         "parents": [folder_id],
+        "driveId": folder_id,
     }
 
     media = MediaIoBaseUpload(
@@ -71,7 +72,7 @@ def upload_image(
 
     uploaded = (
         service.files()
-        .create(body=file_metadata, media_body=media, fields="id, name")
+        .create(body=file_metadata, media_body=media, fields="id, name", supportsAllDrives=True)
         .execute()
     )
 

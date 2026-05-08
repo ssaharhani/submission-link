@@ -94,6 +94,17 @@ admin_password = "YourPasswordHere"
 
 ## Daily Use
 
+### Generating a QR Code (one time)
+
+1. Go to [qr-code-generator.com](https://qr-code-generator.com) or [goqr.me](https://goqr.me)
+2. Paste your plain Streamlit app URL (no `?role=admin`)
+3. Download the QR code image
+4. Display it on the projector each class — it never expires
+
+> ⚠️ Avoid "dynamic QR code" options — those expire on free plans. A plain static QR code is all you need since your URL never changes.
+
+---
+
 ### Opening a session
 
 1. Go to `your-app-url?role=admin`

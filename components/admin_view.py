@@ -2,9 +2,7 @@
 admin_view.py
 -------------
 Instructor control panel.
-- Countdown shown as a static calculation (no per-second rerun)
-- Manual refresh button to update the timer display
-- Save button always visible so Q ID change is explicit
+Displays the session code prominently when open so teacher can write it on the board.
 """
 
 import time
@@ -33,7 +31,17 @@ def render() -> None:
     current_status = state["status"]
     current_q_id   = state["question_id"]
     opened_at      = state.get("opened_at", 0)
+    session_code   = state.get("code", "")
     is_open        = current_status == "Open"
+
+    # ── Session code display (shown prominently when open) ────────────────────
+    if is_open and session_code:
+        st.markdown("## 🔑 Session Code — write this on the board:")
+        st.markdown(
+            f"<div style='font-size:96px; font-weight:900; letter-spacing:24px; text-align:center'>{session_code}</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("---")
 
     # ── Question ID ───────────────────────────────────────────────────────────
     st.subheader("1 · Set the Question ID")
@@ -41,7 +49,7 @@ def render() -> None:
         label="Question ID",
         value=current_q_id,
         placeholder="e.g. Q1, Bonus_Q2, Midterm_Q3",
-        help="Hit 'Save Question ID' below to apply the change.",
+        help="Hit 'Save Question ID' below to apply without toggling status.",
     )
 
     st.markdown("---")
@@ -57,7 +65,6 @@ def render() -> None:
                 st.rerun()
         else:
             if st.button("🟢  OPEN submissions", use_container_width=True):
-                # Save with whatever Q ID is currently in the text field
                 sheets_service.set_session_state("Open", new_q_id)
                 st.rerun()
 
@@ -68,13 +75,11 @@ def render() -> None:
             mins = int(remaining)
             secs = int((remaining - mins) * 60)
             st.success(f"**OPEN** — `{current_q_id}` — closes in ~**{mins}m {secs}s**")
-            st.caption("Tap 🔄 to update the timer.")
         elif is_open:
             st.success(f"**Status: OPEN** — `{current_q_id}`")
         else:
             st.warning("**Status: CLOSED** — submissions are disabled")
 
-    # Manual refresh button (replaces the per-second auto-rerun)
     if st.button("🔄 Refresh status"):
         st.rerun()
 
@@ -82,7 +87,7 @@ def render() -> None:
 
     # ── Save question ID ──────────────────────────────────────────────────────
     st.subheader("3 · Save Question ID without toggling")
-    st.caption("Use this to update the Question ID while keeping the current Open/Closed status.")
+    st.caption("Updates the Question ID while keeping the current Open/Closed status.")
     if st.button("💾  Save Question ID"):
         sheets_service.set_session_state(current_status, new_q_id)
         st.success(f"Saved — Question ID is now `{new_q_id}`")

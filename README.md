@@ -113,9 +113,9 @@ Every file is automatically saved as:
 ```
 {Question_ID}_{Student_Name}_{Student_ID}.jpg
 ```
-Example: `Midterm_Q3_Ali_Hassan_202312345.jpg`
+Example: `Midterm_Q3_Ali_Hassan_1221321.jpg`
 
-For multiple photos: `Midterm_Q3_Ali_Hassan_202312345_1.jpg`, `_2.jpg`, etc.
+For multiple photos: `Midterm_Q3_Ali_Hassan_1221321_1.jpg`, `_2.jpg`, etc.
 
 ---
 

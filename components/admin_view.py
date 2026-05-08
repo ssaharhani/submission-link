@@ -2,9 +2,9 @@
 admin_view.py
 -------------
 Instructor control panel.
-- Session auto-closes after 15 minutes
-- Shows countdown timer
-- Status always starts Closed on first load
+- Countdown shown as a static calculation (no per-second rerun)
+- Manual refresh button to update the timer display
+- Save button always visible so Q ID change is explicit
 """
 
 import time
@@ -31,8 +31,9 @@ def render() -> None:
         st.stop()
 
     current_status = state["status"]
-    current_q_id = state["question_id"]
-    opened_at = state.get("opened_at", 0)
+    current_q_id   = state["question_id"]
+    opened_at      = state.get("opened_at", 0)
+    is_open        = current_status == "Open"
 
     # ── Question ID ───────────────────────────────────────────────────────────
     st.subheader("1 · Set the Question ID")
@@ -40,70 +41,60 @@ def render() -> None:
         label="Question ID",
         value=current_q_id,
         placeholder="e.g. Q1, Bonus_Q2, Midterm_Q3",
+        help="Hit 'Save Question ID' below to apply the change.",
     )
 
     st.markdown("---")
 
     # ── Status toggle ─────────────────────────────────────────────────────────
     st.subheader("2 · Open or Close Submissions")
-    is_open = current_status == "Open"
 
     col1, col2 = st.columns([1, 2])
     with col1:
         if is_open:
             if st.button("🔴  CLOSE submissions", use_container_width=True):
-                _save_state("Closed", new_q_id)
+                sheets_service.set_session_state("Closed", current_q_id)
                 st.rerun()
         else:
             if st.button("🟢  OPEN submissions", use_container_width=True):
-                _save_state("Open", new_q_id)
+                # Save with whatever Q ID is currently in the text field
+                sheets_service.set_session_state("Open", new_q_id)
                 st.rerun()
 
     with col2:
-        if is_open:
-            # Show countdown
-            if opened_at:
-                elapsed = (time.time() - opened_at) / 60
-                remaining = max(0, AUTO_CLOSE_MINUTES - elapsed)
-                mins = int(remaining)
-                secs = int((remaining - mins) * 60)
-                st.success(f"**OPEN** — `{current_q_id}` — auto-closes in **{mins}m {secs}s**")
-            else:
-                st.success(f"**Status: OPEN** — accepting submissions for `{current_q_id}`")
+        if is_open and opened_at:
+            elapsed   = (time.time() - opened_at) / 60
+            remaining = max(0.0, AUTO_CLOSE_MINUTES - elapsed)
+            mins = int(remaining)
+            secs = int((remaining - mins) * 60)
+            st.success(f"**OPEN** — `{current_q_id}` — closes in ~**{mins}m {secs}s**")
+            st.caption("Tap 🔄 to update the timer.")
+        elif is_open:
+            st.success(f"**Status: OPEN** — `{current_q_id}`")
         else:
             st.warning("**Status: CLOSED** — submissions are disabled")
 
-    st.markdown("---")
-
-    # ── Save question ID only ─────────────────────────────────────────────────
-    st.subheader("3 · Save Question ID without toggling")
-    if st.button("💾  Save Question ID"):
-        _save_state(current_status, new_q_id)
-        st.success(f"Saved! Question ID is now `{new_q_id}`")
+    # Manual refresh button (replaces the per-second auto-rerun)
+    if st.button("🔄 Refresh status"):
         st.rerun()
 
     st.markdown("---")
 
-    # ── Storage links ─────────────────────────────────────────────────────────
+    # ── Save question ID ──────────────────────────────────────────────────────
+    st.subheader("3 · Save Question ID without toggling")
+    st.caption("Use this to update the Question ID while keeping the current Open/Closed status.")
+    if st.button("💾  Save Question ID"):
+        sheets_service.set_session_state(current_status, new_q_id)
+        st.success(f"Saved — Question ID is now `{new_q_id}`")
+        st.rerun()
+
+    st.markdown("---")
+
+    # ── Supabase link ─────────────────────────────────────────────────────────
     st.subheader("4 · View submitted files")
     supabase_url = st.secrets["settings"].get("supabase_url", "")
-    bucket = st.secrets["settings"].get("supabase_bucket", "submissions")
+    bucket       = st.secrets["settings"].get("supabase_bucket", "submissions")
     if supabase_url:
-        st.markdown(f"[📦 Open Supabase Storage]({supabase_url}/project/default/storage/buckets/{bucket})")
-
-    webhook_url = st.secrets["settings"].get("webhook_url", "")
-    if webhook_url:
-        st.markdown("[📂 Open Google Drive folder](https://drive.google.com)")
-
-    # ── Auto-refresh while open ───────────────────────────────────────────────
-    if is_open:
-        time.sleep(1)
-        st.rerun()
-
-
-def _save_state(status: str, question_id: str) -> None:
-    try:
-        sheets_service.set_session_state(status, question_id)
-    except Exception as e:
-        st.error(f"⚠️ Could not save: {e}")
-        st.stop()
+        project_id  = supabase_url.replace("https://", "").split(".")[0]
+        storage_url = f"https://supabase.com/dashboard/project/{project_id}/storage/buckets/{bucket}"
+        st.markdown(f"[📦 Open Supabase Storage]({storage_url})")

@@ -88,9 +88,28 @@ def get_session_state() -> dict:
 
 
 def set_session_state(status: str, question_id: str) -> None:
-    """Write status. Generates a new random code when opening."""
-    opened_at = str(time.time()) if status == "Open" else ""
-    code = str(random.randint(100, 999)) if status == "Open" else ""
+    """
+    Write status and question ID.
+    - Closed → Open: generates a new code and records timestamp.
+    - Open → Open (Q ID update): preserves existing code and timestamp.
+    - Closing: clears code and timestamp.
+    """
+    current = _fetch_state_from_sheet()
+    currently_open = current["status"] == "Open"
+
+    if status == "Open" and not currently_open:
+        # Transitioning Closed → Open: generate fresh code
+        opened_at = str(time.time())
+        code = str(random.randint(100, 999))
+    elif status == "Open" and currently_open:
+        # Already open, just updating Q ID: keep existing code and timestamp
+        opened_at = str(current["opened_at"]) if current["opened_at"] else str(time.time())
+        code = current["code"]
+    else:
+        # Closing
+        opened_at = ""
+        code = ""
+
     _get_worksheet().update(
         f"A{DATA_ROW}:D{DATA_ROW}",
         [[status, question_id, opened_at, code]]

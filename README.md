@@ -1,7 +1,7 @@
 # 📝 Classroom Submission App
 
 A lightweight tool for collecting student handwritten solutions via photo upload.
-Students scan a QR code → fill in name & ID → upload a photo.
+Students scan a QR code → enter a 3-digit session security code → fill in name & ID → upload a photo.
 You control open/close from a simple password-protected panel.
 
 ---
@@ -45,8 +45,8 @@ submission_app/
 ### Step 2 — Google Sheet (Control Plane)
 
 1. Create a new Google Sheet.
-2. In cell **A1** type `Status`, in **B1** type `Question_ID`, in **C1** type `Opened_At`.
-3. In cell **A2** type `Closed`, in **B2** type `Q1`, leave **C2** empty.
+2. In cell **A1** type `Status`, in **B1** type `Question_ID`, in **C1** type `Opened_At`, in **D1** type `Session_Code`.
+3. In cell **A2** type `Closed`, in **B2** type `Q1`, leave **C2** and **D2** empty.
 4. **Share** the sheet with the `client_email` from your JSON key file → give it **Editor** access.
 5. Copy the sheet's full URL.
 
@@ -110,8 +110,12 @@ admin_password = "YourPasswordHere"
 1. Go to `your-app-url?role=admin`
 2. Enter the admin password in the sidebar.
 3. Type the Question ID (e.g., `Midterm_Q3`).
-4. Click **OPEN submissions** — the session auto-closes after 15 minutes.
-5. Display the student URL (or a QR code) on the projector.
+4. Click **OPEN submissions** — a random 3-digit session code is generated automatically.
+5. Write the code on the board — students must enter it before the form unlocks.
+6. Display the student URL (or QR code) on the projector.
+7. Session auto-closes after 15 minutes.
+
+> 💡 Updating the Question ID mid-session does **not** change the code. Students already in the room keep the same code.
 
 ### Closing a session
 
